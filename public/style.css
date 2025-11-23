@@ -1,0 +1,213 @@
+/* public/style.css */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f7f6;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Align to top */
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    background-color: #fff;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background-color: #4CAF50; /* Green for waste management theme */
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 5px solid #388E3C;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.8em;
+}
+
+.header-controls button {
+    background-color: #66BB6A;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin-left: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.header-controls button:hover {
+    background-color: #4CAF50;
+}
+
+main {
+    padding: 20px;
+    flex-grow: 1; /* Allows main content to fill available space */
+    position: relative; /* For positioning overlay forms */
+}
+
+#map {
+    height: 600px; /* Adjust height as needed */
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1; /* Ensure map is behind overlay forms */
+}
+
+/* Leaflet Customizations for red spots (similar to screenshot) */
+/* We use L.circleMarker in JS for the red spot, which is rendered by Leaflet */
+
+
+/* Overlay Forms (Reporting, Details, Login, Leaderboard) */
+.overlay-form {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    z-index: 1000; /* On top of the map */
+    max-width: 500px;
+    width: 90%;
+    box-sizing: border-box;
+    max-height: 90vh; /* Limit height for scrollability */
+    overflow-y: auto; /* Enable scrolling for long forms */
+}
+
+.overlay-form h2 {
+    color: #4CAF50;
+    margin-top: 0;
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group input[type="file"],
+.form-group textarea {
+    width: calc(100% - 20px); /* Adjust for padding */
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box; /* Include padding in width */
+}
+
+.form-group textarea {
+    resize: vertical;
+}
+
+.form-group button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-top: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.form-group button:hover {
+    background-color: #388E3C;
+}
+
+.overlay-form button[type="submit"] {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1em;
+    width: 100%;
+    margin-top: 20px;
+    transition: background-color 0.3s ease;
+}
+
+.overlay-form button[type="submit"]:hover {
+    background-color: #388E3C;
+}
+
+.overlay-form .close-btn {
+    background-color: #f44336; /* Red for close */
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin-top: 15px;
+    float: right; /* Position to the right */
+    transition: background-color 0.3s ease;
+}
+
+.overlay-form .close-btn:hover {
+    background-color: #d32f2f;
+}
+
+/* Report Details Popup Specifics */
+#reportDetailsPopup .details-content img {
+    border: 1px solid #ddd;
+}
+#reportDetailsPopup .details-content p {
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+#reportDetailsPopup .details-content strong {
+    color: #4CAF50;
+}
+
+/* Leaderboard Table */
+#leaderboardTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+#leaderboardTable th, #leaderboardTable td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+
+#leaderboardTable th {
+    background-color: #f2f2f2;
+    color: #333;
+}
+
+#leaderboardTable tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+#leaderboardTable tbody tr:hover {
+    background-color: #e9e9e9;
+}
