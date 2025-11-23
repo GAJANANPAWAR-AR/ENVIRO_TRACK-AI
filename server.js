@@ -241,6 +241,44 @@ const pool = new Pool({
     port: process.env.DB_PORT,
 });
 
+// Auto-create tables on startup
+const createTablesIfNotExist = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE TABLE IF NOT EXISTS waste_reports (
+        id SERIAL PRIMARY KEY,
+        latitude DECIMAL(10, 8) NOT NULL,
+        longitude DECIMAL(11, 8) NOT NULL,
+        description TEXT,
+        image_url VARCHAR(500) NOT NULL,
+        reported_by VARCHAR(255),
+        reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_cleaned BOOLEAN DEFAULT FALSE,
+        cleaned_by_user_id INTEGER REFERENCES users(id),
+        cleaned_image_url VARCHAR(500),
+        cleaned_at TIMESTAMP,
+        points INTEGER DEFAULT 10,
+        cleanup_verified BOOLEAN DEFAULT FALSE,
+        verification_confidence VARCHAR(20),
+        ai_comparison_result TEXT
+      );
+    `);
+    console.log('✅ Database tables checked/created successfully');
+  } catch (error) {
+    console.error('❌ Error creating tables:', error);
+  }
+};
+// Call this function on startup
+createTablesIfNotExist();
+
 pool.connect((err, client, release) => {
     if (err) {
         return console.error('❌ Database connection error:', err.stack);
@@ -628,3 +666,4 @@ app.listen(PORT, () => {
     console.log('🔑 Gemini API: ' + (process.env.GEMINI_API_KEY ? 'Configured ✅' : 'Missing ❌'));
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 });
+
