@@ -1,5 +1,5 @@
 // @ts-nocheck
-// server.js - FINAL PERFECT Complete Waste Management System
+// server.js - EnviroTrack Complete System with Auto Municipal User
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
@@ -16,8 +16,7 @@ const PORT = process.env.PORT || 3000;
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ========== GPS VALIDATION FUNCTIONS ==========
-
+// ========== GPS VALIDATION ==========
 function validateAndParseGPS(latString, lngString) {
     const lat = parseFloat(latString);
     const lng = parseFloat(lngString);
@@ -63,13 +62,11 @@ function getMimeType(filePath) {
 }
 
 // ========== AI FUNCTIONS ==========
-
 async function analyzeImageForWaste(filePath) {
     console.log('🔍 Starting AI analysis for:', filePath);
     const startTime = Date.now();
     
     try {
-        console.log('📦 Initializing Gemini model...');
         const model = genAI.getGenerativeModel({ 
             model: "gemini-2.0-flash",
             generationConfig: {
@@ -79,10 +76,8 @@ async function analyzeImageForWaste(filePath) {
             }
         });
 
-        console.log('📂 Reading image file...');
         const imageData = fs.readFileSync(filePath);
         const base64Image = imageData.toString('base64');
-        console.log('✅ Image converted to base64, size:', base64Image.length, 'chars');
         
         const imagePart = {
             inlineData: {
@@ -91,9 +86,8 @@ async function analyzeImageForWaste(filePath) {
             },
         };
 
-        const prompt = 'Look at this image carefully. Does it contain any visible waste, garbage, trash, litter, pollution, or debris (such as plastic bottles, food waste, paper, cans, bags, construction waste, or any form of rubbish)? Answer with ONLY one word: "Yes" or "No".';
+        const prompt = 'Look at this image carefully. Does it contain any visible waste, garbage, trash, litter, pollution, or debris? Answer with ONLY one word: "Yes" or "No".';
 
-        console.log('🤖 Sending request to Gemini AI...');
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;
         const text = response.text().trim();
@@ -105,12 +99,7 @@ async function analyzeImageForWaste(filePath) {
                        normalizedText.startsWith('yes') ||
                        (normalizedText.includes('waste') && !normalizedText.includes('no'));
         
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🤖 AI ANALYSIS COMPLETE');
-        console.log('   Response: "' + text + '"');
-        console.log('   Waste Detected: ' + (isWaste ? '✅ YES' : '❌ NO'));
-        console.log('   Processing Time: ' + elapsed + 'ms');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🤖 AI Result: "' + text + '" - Waste: ' + (isWaste ? 'YES' : 'NO') + ' (' + elapsed + 'ms)');
         
         return {
             isWaste: isWaste,
@@ -120,29 +109,21 @@ async function analyzeImageForWaste(filePath) {
         };
 
     } catch (error) {
-        const elapsed = Date.now() - startTime;
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.error('❌ AI ANALYSIS ERROR');
-        console.error('   Error:', error.message);
-        console.error('   Time Elapsed:', elapsed + 'ms');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        
+        console.error('❌ AI Error:', error.message);
         return {
             isWaste: true,
-            text: 'AI analysis unavailable - manual review required',
+            text: 'AI unavailable - manual review required',
             confidence: 'unknown',
-            elapsed: elapsed
+            elapsed: Date.now() - startTime
         };
     }
 }
 
-// FIXED: Simplified cleanup verification - only checks image similarity, NO GPS
 async function verifyCleanup(beforeImagePath, afterImagePath) {
     console.log('🔍 Starting cleanup verification...');
     const startTime = Date.now();
     
     try {
-        console.log('📦 Initializing Gemini model for verification...');
         const model = genAI.getGenerativeModel({ 
             model: "gemini-2.0-flash-exp",
             generationConfig: {
@@ -151,14 +132,6 @@ async function verifyCleanup(beforeImagePath, afterImagePath) {
             }
         });
 
-        if (!fs.existsSync(beforeImagePath)) {
-            throw new Error('Before image not found: ' + beforeImagePath);
-        }
-        if (!fs.existsSync(afterImagePath)) {
-            throw new Error('After image not found: ' + afterImagePath);
-        }
-
-        console.log('📂 Reading before/after images...');
         const beforeData = fs.readFileSync(beforeImagePath);
         const afterData = fs.readFileSync(afterImagePath);
         
@@ -176,63 +149,40 @@ async function verifyCleanup(beforeImagePath, afterImagePath) {
             }
         };
 
-        // FIXED: Simplified prompt - only checks image similarity
-        const prompt = 'Compare these two images:\n\nFirst image: Shows a location with waste/garbage.\nSecond image: Should show the same location after cleanup.\n\nAnswer these questions:\n1. Is the waste/garbage removed or significantly reduced in the second image?\n2. Do both images have similar features, background, or surroundings?\n\nRespond ONLY in this exact format:\nCleaned: Yes/No\nSimilar Images: Yes/No\nConfidence: High/Medium/Low';
+        const prompt = 'Compare these two images. First image shows waste. Second image should show the same location cleaned. Answer: Is waste removed? Are images similar? Format: Cleaned: Yes/No, Similar: Yes/No, Confidence: High/Medium/Low';
 
-        console.log('🤖 Sending verification request to Gemini AI...');
         const result = await model.generateContent([prompt, beforeImage, afterImage]);
         const response = await result.response;
         const text = response.text().trim();
         
-        const elapsed = Date.now() - startTime;
-        
         const normalizedText = text.toLowerCase();
-        const isCleaned = normalizedText.includes('cleaned: yes') || 
-                         (normalizedText.includes('cleaned') && normalizedText.includes('yes'));
+        const isCleaned = normalizedText.includes('cleaned: yes');
+        const similarImages = normalizedText.includes('similar: yes') || normalizedText.includes('similar images: yes');
+        const confidence = normalizedText.includes('high') ? 'high' : normalizedText.includes('medium') ? 'medium' : 'low';
         
-        const similarImages = normalizedText.includes('similar images: yes') || 
-                             normalizedText.includes('similar: yes');
-        
-        const confidence = normalizedText.includes('high') ? 'high' : 
-                          normalizedText.includes('medium') ? 'medium' : 'low';
-        
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🔍 CLEANUP VERIFICATION COMPLETE');
-        console.log('   AI Response: "' + text + '"');
-        console.log('   Cleaned: ' + (isCleaned ? '✅ YES' : '❌ NO'));
-        console.log('   Similar Images: ' + (similarImages ? '✅ YES' : '❌ NO'));
-        console.log('   Confidence: ' + confidence.toUpperCase());
-        console.log('   Processing Time: ' + elapsed + 'ms');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔍 Verification: Cleaned=' + isCleaned + ', Similar=' + similarImages + ', Confidence=' + confidence);
         
         return {
             verified: isCleaned && similarImages,
             aiResponse: text,
             confidence: confidence,
             similarImages: similarImages,
-            elapsed: elapsed
+            elapsed: Date.now() - startTime
         };
 
     } catch (error) {
-        const elapsed = Date.now() - startTime;
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.error('❌ CLEANUP VERIFICATION ERROR');
-        console.error('   Error:', error.message);
-        console.error('   Time Elapsed:', elapsed + 'ms');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        
+        console.error('❌ Verification Error:', error.message);
         return {
             verified: false,
             aiResponse: 'Verification failed: ' + error.message,
             confidence: 'unknown',
             similarImages: false,
-            elapsed: elapsed
+            elapsed: Date.now() - startTime
         };
     }
 }
 
 // ========== DATABASE ==========
-
 const pool = new Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
@@ -241,59 +191,64 @@ const pool = new Pool({
     port: process.env.DB_PORT,
 });
 
-// Auto-create tables on startup
-const createTablesIfNotExist = async () => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'user',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE TABLE IF NOT EXISTS waste_reports (
-        id SERIAL PRIMARY KEY,
-        latitude DECIMAL(10, 8) NOT NULL,
-        longitude DECIMAL(11, 8) NOT NULL,
-        description TEXT,
-        image_url VARCHAR(500) NOT NULL,
-        reported_by VARCHAR(255),
-        reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_cleaned BOOLEAN DEFAULT FALSE,
-        cleaned_by_user_id INTEGER REFERENCES users(id),
-        cleaned_image_url VARCHAR(500),
-        cleaned_at TIMESTAMP,
-        points INTEGER DEFAULT 10,
-        cleanup_verified BOOLEAN DEFAULT FALSE,
-        verification_confidence VARCHAR(20),
-        ai_comparison_result TEXT
-      );
-    `);
-    console.log('✅ Database tables checked/created successfully');
-  } catch (error) {
-    console.error('❌ Error creating tables:', error);
-  }
-};
-// Call this function on startup
-createTablesIfNotExist();
+// Auto-create tables and dummy municipal user
+const initializeDatabase = async () => {
+    try {
+        // Create tables
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                role VARCHAR(50) DEFAULT 'user',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            
+            CREATE TABLE IF NOT EXISTS waste_reports (
+                id SERIAL PRIMARY KEY,
+                latitude DECIMAL(10, 8) NOT NULL,
+                longitude DECIMAL(11, 8) NOT NULL,
+                description TEXT,
+                image_url VARCHAR(500) NOT NULL,
+                reported_by VARCHAR(255),
+                reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_cleaned BOOLEAN DEFAULT FALSE,
+                cleaned_by_user_id INTEGER REFERENCES users(id),
+                cleaned_image_url VARCHAR(500),
+                cleaned_at TIMESTAMP,
+                points INTEGER DEFAULT 10,
+                cleanup_verified BOOLEAN DEFAULT FALSE,
+                verification_confidence VARCHAR(20),
+                ai_comparison_result TEXT
+            );
+        `);
+        console.log('✅ Tables created/verified');
 
-pool.connect((err, client, release) => {
-    if (err) {
-        return console.error('❌ Database connection error:', err.stack);
-    }
-    client.query('SELECT NOW()', (err, result) => {
-        release();
-        if (err) {
-            return console.error('❌ Query error:', err.stack);
+        // Create dummy municipal user if doesn't exist
+        const checkUser = await pool.query("SELECT * FROM users WHERE username = 'municipal'");
+        if (checkUser.rows.length === 0) {
+            const hashedPassword = await bcrypt.hash('password123', 10);
+            await pool.query(
+                "INSERT INTO users (username, password_hash, role) VALUES ('municipal', $1, 'municipal')",
+                [hashedPassword]
+            );
+            console.log('✅ Municipal user created - Username: municipal | Password: password123');
+        } else {
+            console.log('✅ Municipal user already exists');
         }
-        console.log('✅ Connected to PostgreSQL:', result.rows[0].now);
-    });
+
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
+    }
+};
+
+initializeDatabase();
+
+pool.on('connect', () => {
+    console.log('✅ Connected to PostgreSQL');
 });
 
 // ========== MIDDLEWARE ==========
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -309,28 +264,20 @@ app.get('/', (req, res) => {
 });
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-    }
+    destination: (req, file, cb) => cb(null, 'uploads/'),
+    filename: (req, file, cb) => cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
 });
-
-const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (mimetype && extname) {
-        return cb(null, true);
-    }
-    cb(new Error('Only images allowed'));
-};
 
 const upload = multer({ 
     storage: storage,
     limits: { fileSize: 10 * 1024 * 1024 },
-    fileFilter: fileFilter
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif|webp/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        if (mimetype && extname) return cb(null, true);
+        cb(new Error('Only images allowed'));
+    }
 });
 
 const authenticateToken = (req, res, next) => {
@@ -347,7 +294,7 @@ const authenticateToken = (req, res, next) => {
 
 // ========== API ENDPOINTS ==========
 
-// 1. Register
+// Register
 app.post('/api/register', async (req, res) => {
     const { username, password, role } = req.body;
     if (!username || !password) {
@@ -369,7 +316,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 2. Login
+// Login
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -387,53 +334,40 @@ app.post('/api/login', async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
-        res.json({ message: 'Login successful', accessToken: accessToken, role: user.role, username: user.username });
+        res.json({ 
+            message: 'Login successful', 
+            accessToken: accessToken, 
+            role: user.role, 
+            username: user.username 
+        });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
 
-// 3. Report Waste
+// Report Waste
 app.post('/api/report-waste', upload.single('wasteImage'), async (req, res) => {
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📥 NEW WASTE REPORT RECEIVED');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
     const { latitude, longitude, description, reportedBy } = req.body;
     
-    console.log('📍 GPS Data - Lat:', latitude, 'Lng:', longitude);
-    console.log('📝 Description:', description || 'None');
-    console.log('👤 Reporter:', reportedBy || 'Anonymous');
-    console.log('📸 File received:', req.file ? '✅ Yes (' + req.file.filename + ')' : '❌ No');
-    
     if (!req.file) {
-        console.log('❌ ERROR: No image file received');
         return res.status(400).json({ message: 'Image required' });
     }
     
     const gps = validateAndParseGPS(latitude, longitude);
     if (!gps.valid) {
-        console.log('❌ GPS VALIDATION FAILED:', gps.error);
         if (req.file) fs.unlinkSync(req.file.path);
         return res.status(400).json({ message: gps.error });
     }
-    
-    console.log('✅ GPS Validated - Lat:', gps.latitude, 'Lng:', gps.longitude);
 
     try {
         const analysisResult = await analyzeImageForWaste(req.file.path);
         
         if (!analysisResult.isWaste) {
-            console.log('🚫 REPORT REJECTED - No waste detected in image');
             fs.unlinkSync(req.file.path);
             return res.status(400).json({ 
-                message: 'AI did not detect waste in this image. Please upload an image clearly showing garbage, litter, or trash.',
-                aiAnalysis: {
-                    result: analysisResult.text,
-                    confidence: analysisResult.confidence,
-                    processingTime: analysisResult.elapsed + 'ms'
-                }
+                message: 'AI did not detect waste in this image.',
+                aiAnalysis: analysisResult
             });
         }
 
@@ -443,31 +377,23 @@ app.post('/api/report-waste', upload.single('wasteImage'), async (req, res) => {
             [gps.latitude, gps.longitude, description, imageUrl, reportedBy || 'Anonymous']
         );
         
-        console.log('✅ REPORT SAVED TO DATABASE');
-        console.log('   Report ID:', result.rows[0].id);
-        console.log('   GPS:', gps.latitude + ', ' + gps.longitude);
-        console.log('   Image:', imageUrl);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        console.log('✅ Report saved - ID:', result.rows[0].id);
         
         res.status(201).json({ 
             message: 'Waste report submitted successfully!', 
             report: result.rows[0],
-            aiAnalysis: {
-                result: analysisResult.text,
-                confidence: analysisResult.confidence,
-                processingTime: analysisResult.elapsed + 'ms'
-            }
+            aiAnalysis: analysisResult
         });
     } catch (error) {
         if (req.file && fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);
         }
-        console.error('❌ REPORT ERROR:', error);
+        console.error('❌ Report error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
 
-// 4. Get Reports
+// Get Reports
 app.get('/api/waste-reports', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM waste_reports WHERE is_cleaned = FALSE ORDER BY reported_at DESC');
@@ -478,7 +404,7 @@ app.get('/api/waste-reports', async (req, res) => {
     }
 });
 
-// 5. Get Single Report
+// Get Single Report
 app.get('/api/waste-reports/:id', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM waste_reports WHERE id = $1', [req.params.id]);
@@ -492,19 +418,12 @@ app.get('/api/waste-reports/:id', async (req, res) => {
     }
 });
 
-// 6. Clean Report (FIXED: No GPS required, only image similarity)
+// Clean Report (DELETES after verification)
 app.put('/api/clean-report/:id', authenticateToken, upload.single('cleanedImage'), async (req, res) => {
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🧹 CLEANUP SUBMISSION RECEIVED');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
     if (req.user.role !== 'municipal') {
         if (req.file) fs.unlinkSync(req.file.path);
         return res.status(403).json({ message: 'Municipal users only' });
     }
-    
-    console.log('📸 Cleaned image:', req.file ? '✅ Yes' : '❌ No');
-    console.log('👤 Municipal User:', req.user.username);
     
     if (!req.file) {
         return res.status(400).json({ message: 'Cleaned image required' });
@@ -522,56 +441,45 @@ app.put('/api/clean-report/:id', authenticateToken, upload.single('cleanedImage'
         const beforeImagePath = path.join(__dirname, originalReport.image_url);
         const afterImagePath = req.file.path;
         
-        // FIXED: Only pass image paths, no GPS
         const verification = await verifyCleanup(beforeImagePath, afterImagePath);
         
-        const cleanedImageUrl = '/uploads/' + req.file.filename;
-        
-        // FIXED: Updated database columns - removed location_match
+        // DELETE the report
         const result = await pool.query(
-    'DELETE FROM waste_reports WHERE id = $1 RETURNING *',
-    [req.params.id]
-);
-
-        console.log('✅ CLEANUP RECORD UPDATED IN DATABASE');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            'DELETE FROM waste_reports WHERE id = $1 RETURNING *',
+            [req.params.id]
+        );
+        
+        console.log('✅ Report deleted - ID:', req.params.id);
         
         res.json({ 
-            message: verification.verified ? 'Cleanup verified successfully!' : 'Cleanup submitted - manual review may be required',
+            message: 'Report cleaned and removed successfully!',
             report: result.rows[0],
-            verification: {
-                verified: verification.verified,
-                confidence: verification.confidence,
-                similarImages: verification.similarImages,
-                aiResponse: verification.aiResponse,
-                processingTime: verification.elapsed + 'ms'
-            }
+            verification: verification
         });
         
     } catch (error) {
         if (req.file && fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);
         }
-        console.error('❌ CLEANUP ERROR:', error);
+        console.error('❌ Cleanup error:', error);
         res.status(500).json({ message: 'Server error: ' + error.message });
     }
 });
 
-// 7. Leaderboard (FIXED)
+// Leaderboard
 app.get('/api/leaderboard', async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT reported_by, SUM(points) AS total_points, COUNT(*) AS total_reports FROM waste_reports WHERE reported_by IS NOT NULL AND reported_by != \'\' AND reported_by != \'Anonymous\' GROUP BY reported_by ORDER BY total_points DESC LIMIT 10'
+            "SELECT reported_by, SUM(points) AS total_points, COUNT(*) AS total_reports FROM waste_reports WHERE reported_by IS NOT NULL AND reported_by != '' AND reported_by != 'Anonymous' GROUP BY reported_by ORDER BY total_points DESC LIMIT 10"
         );
-        console.log('🏆 Leaderboard query result:', result.rows.length, 'entries');
         res.json(result.rows);
     } catch (error) {
-        console.error('❌ Leaderboard error:', error);
+        console.error('Leaderboard error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
 
-// 8. Statistics
+// Statistics
 app.get('/api/statistics', async (req, res) => {
     try {
         const result = await pool.query(
@@ -584,7 +492,7 @@ app.get('/api/statistics', async (req, res) => {
     }
 });
 
-// 9. Health Check
+// Health Check
 app.get('/api/health', async (req, res) => {
     try {
         await pool.query('SELECT 1');
@@ -599,7 +507,7 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-// 10. Municipal Endpoints
+// Municipal Endpoints
 app.get('/api/municipal/pending', authenticateToken, async (req, res) => {
     if (req.user.role !== 'municipal') {
         return res.status(403).json({ message: 'Access denied' });
@@ -619,27 +527,11 @@ app.get('/api/municipal/stats', authenticateToken, async (req, res) => {
     }
     try {
         const stats = await pool.query(
-            'SELECT COUNT(*) as total_cleaned, COUNT(CASE WHEN cleanup_verified = TRUE THEN 1 END) as verified_cleanups, COUNT(CASE WHEN cleanup_verified = FALSE THEN 1 END) as unverified_cleanups, COUNT(CASE WHEN verification_confidence = \'high\' THEN 1 END) as high_confidence, COUNT(CASE WHEN verification_confidence = \'medium\' THEN 1 END) as medium_confidence, COUNT(CASE WHEN verification_confidence = \'low\' THEN 1 END) as low_confidence FROM waste_reports WHERE is_cleaned = TRUE'
+            "SELECT COUNT(*) as total_cleaned FROM waste_reports WHERE is_cleaned = TRUE"
         );
         res.json(stats.rows[0]);
     } catch (error) {
         console.error('Stats error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
-app.get('/api/municipal/history', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'municipal') {
-        return res.status(403).json({ message: 'Access denied' });
-    }
-    try {
-        const result = await pool.query(
-            'SELECT * FROM waste_reports WHERE cleaned_by_user_id = $1 ORDER BY cleaned_at DESC LIMIT 50',
-            [req.user.id]
-        );
-        res.json(result.rows);
-    } catch (error) {
-        console.error('History error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -660,11 +552,9 @@ app.listen(PORT, () => {
     console.log('🚀 ENVIROTRACK SERVER STARTED');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('🌐 Server: http://localhost:' + PORT);
-    console.log('📊 API: Ready');
+    console.log('👤 Municipal Login: municipal / password123');
     console.log('✅ GPS Validation: Active');
-    console.log('🤖 AI Model: gemini-2.0-flash-exp');
+    console.log('🤖 AI Model: gemini-2.0-flash');
     console.log('🔑 Gemini API: ' + (process.env.GEMINI_API_KEY ? 'Configured ✅' : 'Missing ❌'));
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 });
-
-
