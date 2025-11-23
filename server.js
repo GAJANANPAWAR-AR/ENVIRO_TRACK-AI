@@ -2,7 +2,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🌍 ENVIROTRACK - PRODUCTION-READY WASTE MANAGEMENT SYSTEM v2.0
 // ═══════════════════════════════════════════════════════════════════════════════
- // Fix X-Forwarded-For error with express-rate-limit
+app.set('trust proxy', 1); // Fix X-Forwarded-For error with express-rate-limit
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
@@ -19,7 +19,6 @@ const cors = require('cors');
 const compression = require('compression');
 
 const app = express();
-app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1191,5 +1190,3 @@ process.on('SIGTERM', () => {
         process.exit(0);
     });
 });
-
-
