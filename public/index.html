@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waste Reporter App</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Waste Reporter</h1>
+            <div class="header-controls">
+                <button id="showReportFormBtn">Report Waste</button>
+                <button id="showLeaderboardBtn">Leaderboard</button>
+                <button id="showMunicipalLoginBtn">Municipal Login</button>
+                <button id="logoutBtn" style="display: none;">Logout</button>
+            </div>
+        </header>
+
+        <main>
+            <div id="map"></div> <div id="reportFormContainer" class="overlay-form" style="display: none;">
+                <h2>Report New Waste</h2>
+                <form id="wasteReportForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="wasteImageInput">Capture Waste Image:</label>
+                        <input type="file" id="wasteImageInput" accept="image/*" capture="environment">
+                        <video id="cameraFeed" autoplay style="display: none; width: 100%; max-width: 400px; height: auto; margin-top: 10px; border-radius: 8px;"></video>
+                        <canvas id="canvas" style="display: none;"></canvas>
+                        <button type="button" id="capturePhotoBtn" style="display: none;">Capture Photo</button>
+                        <img id="capturedImagePreview" src="" alt="Captured Waste Image" style="display: none; max-width: 100%; height: auto; margin-top: 10px; border-radius: 8px;">
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <textarea id="description" placeholder="Briefly describe the waste (e.g., plastic bottles, construction debris)" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="reportedBy">Reporter Name (optional):</label>
+                        <input type="text" id="reportedBy" placeholder="Your Name">
+                    </div>
+                    <div class="form-group">
+                        <label for="latitude">Latitude:</label>
+                        <input type="text" id="latitude" readonly required>
+                    </div>
+                    <div class="form-group">
+                        <label for="longitude">Longitude:</label>
+                        <input type="text" id="longitude" readonly required>
+                        <button type="button" id="getCurrentLocationBtn">Get My Location</button>
+                    </div>
+                    <button type="submit">Submit Report</button>
+                    <button type="button" class="close-btn" onclick="hideAllForms()">Close</button>
+                </form>
+            </div>
+
+            <div id="reportDetailsPopup" class="overlay-form" style="display: none;">
+                <h2 id="reportDetailsTitle">Waste Report Details</h2>
+                <div class="details-content">
+                    <p><strong>Description:</strong> <span id="popupDescription"></span></p>
+                    <p><strong>Reported By:</strong> <span id="popupReportedBy"></span></p>
+                    <p><strong>Reported At:</strong> <span id="popupReportedAt"></span></p>
+                    <p><strong>Location:</strong> <span id="popupLatitude"></span>, <span id="popupLongitude"></span></p>
+                    <img id="popupWasteImage" src="" alt="Waste Image" style="max-width: 100%; height: auto; margin-top: 10px; border-radius: 8px;">
+
+                    <div id="municipalControls" style="display: none; margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px;">
+                        <h3>Municipal Action:</h3>
+                        <form id="cleanReportForm" enctype="multipart/form-data">
+                            <input type="hidden" id="cleanReportId">
+                            <div class="form-group">
+                                <label for="cleanedImageInput">Upload Cleaned Area Photo:</label>
+                                <input type="file" id="cleanedImageInput" accept="image/*" capture="environment" required>
+                            </div>
+                            <button type="submit">Mark as Cleaned</button>
+                        </form>
+                        <div id="cleanedDetails" style="display: none; margin-top: 15px;">
+                            <p><strong>Status:</strong> <span style="color: green; font-weight: bold;">CLEANED</span></p>
+                            <p><strong>Cleaned By:</strong> <span id="popupCleanedBy"></span></p>
+                            <p><strong>Cleaned At:</strong> <span id="popupCleanedAt"></span></p>
+                            <img id="popupCleanedImage" src="" alt="Cleaned Image" style="max-width: 100%; height: auto; margin-top: 10px; border-radius: 8px;">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="close-btn" onclick="hideAllForms()">Close</button>
+            </div>
+
+            <div id="municipalLoginFormContainer" class="overlay-form" style="display: none;">
+                <h2>Municipal Login</h2>
+                <form id="municipalLoginForm">
+                    <div class="form-group">
+                        <label for="loginUsername">Username:</label>
+                        <input type="text" id="loginUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password:</label>
+                        <input type="password" id="loginPassword" required>
+                    </div>
+                    <button type="submit">Login</button>
+                    <button type="button" class="close-btn" onclick="hideAllForms()">Close</button>
+                </form>
+            </div>
+
+            <div id="leaderboardContainer" class="overlay-form" style="display: none;">
+                <h2>Top Reporters Leaderboard</h2>
+                <table id="leaderboardTable">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Reporter</th>
+                            <th>Total Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+                <button type="button" class="close-btn" onclick="hideAllForms()">Close</button>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
