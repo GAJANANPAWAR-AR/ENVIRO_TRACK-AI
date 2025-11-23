@@ -529,10 +529,10 @@ app.put('/api/clean-report/:id', authenticateToken, upload.single('cleanedImage'
         
         // FIXED: Updated database columns - removed location_match
         const result = await pool.query(
-            'UPDATE waste_reports SET is_cleaned = TRUE, cleaned_by_user_id = $1, cleaned_image_url = $2, cleaned_at = CURRENT_TIMESTAMP, cleanup_verified = $3, verification_confidence = $4, ai_comparison_result = $5 WHERE id = $6 RETURNING *',
-            [req.user.id, cleanedImageUrl, verification.verified, verification.confidence, verification.aiResponse, req.params.id]
-        );
-        
+    'DELETE FROM waste_reports WHERE id = $1 RETURNING *',
+    [req.params.id]
+);
+
         console.log('✅ CLEANUP RECORD UPDATED IN DATABASE');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
         
@@ -666,4 +666,5 @@ app.listen(PORT, () => {
     console.log('🔑 Gemini API: ' + (process.env.GEMINI_API_KEY ? 'Configured ✅' : 'Missing ❌'));
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 });
+
 
